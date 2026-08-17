@@ -22,6 +22,7 @@ For restricted access, replace the anonymous policies with authenticated-user po
 - Uploaded workbook datasets are written to `public.app_state`.
 - Supabase Realtime pushes changes to other open browsers.
 - The **Edit Header** control saves a shared title, subtitle, and data label for each uploaded dataset.
+- **Download Snapshot** creates a self-contained, view-only HTML copy of the current app and data that can be reopened later without connecting to the live database.
 - The embedded dataset remains a recovery snapshot if the database is unavailable.
 
 ## Site
