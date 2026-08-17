@@ -49,7 +49,7 @@
         <div class="kpi card"><div class="kpi-label">Franchises</div><div class="kpi-value" id="kpiFranchises">—</div><div class="kpi-note">represented in results</div></div>
       </section>
       <section class="table-card card">
-        <div class="toolbar"><div><div class="result-title">Job portfolio</div><div class="result-note" id="resultNote">Loading jobs…</div></div><div class="actions"><input type="file" id="excelUpload" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden><button class="btn" id="uploadExcel">Upload Excel</button><select class="btn" id="sortOrder" aria-label="Sort jobs"><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="workbook">Workbook order</option></select><button class="btn" id="exportCsv">Export CSV</button><button class="btn" id="copySavedLink">Copy App Link</button><button class="btn" id="downloadCopy">Download Backup</button></div></div>
+        <div class="toolbar"><div><div class="result-title">Job portfolio</div><div class="result-note" id="resultNote">Loading jobs…</div></div><div class="actions"><input type="file" id="excelUpload" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden><button class="btn" id="uploadExcel">Upload Excel</button><select class="btn" id="sortOrder" aria-label="Sort jobs"><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="workbook">Workbook order</option></select><button class="btn" id="exportCsv">Export CSV</button><button class="btn" id="copySavedLink">Copy App Link</button><button class="btn" id="downloadCopy">Download Snapshot</button></div></div>
         <div class="table-scroll"><table class="jobs"><thead><tr><th>Job number</th><th>Franchise / GM</th><th>Status</th><th>DAYS IN STATUS</th><th>Estimate</th><th class="hide-mobile">SA</th><th class="hide-mobile">Customer</th><th>Next Steps</th></tr></thead><tbody id="jobRows"></tbody></table><div class="empty" id="empty" hidden>No jobs match these filters.</div></div>
         <div class="pagination"><span class="muted" id="pageLabel"></span><div class="pager"><button class="btn" id="prev">Previous</button><button class="btn" id="next">Next</button></div></div>
         <div class="footnote">Changes are shared live through Supabase. Anyone with this site's link can view, edit, reset, or replace the job dataset.</div>
@@ -208,7 +208,26 @@ async function saveJob(){if(!activeJob)return;const button=document.getElementBy
 async function resetJob(){if(!activeJob)return;const jobNumber=activeJob.jobNumber,original=sourceJobs.find(j=>j.jobNumber===jobNumber);if(!original)return;document.getElementById('savedMessage').textContent='Resetting shared data…';try{const {error}=await db.from('job_edits').delete().eq('job_number',jobNumber);if(error)throw error;delete stored[jobNumber];Object.assign(activeJob,{sa:original.sa,saRole:original.saRole,subSegment:original.subSegment,customer:original.customer,nextSteps:''});openJob(activeJob);refreshOptions('save');runFilter();document.getElementById('savedMessage').textContent='Restored to workbook values for everyone.'}catch(error){console.error(error);document.getElementById('savedMessage').textContent='Reset failed. Please try again.'}}
 function exportCsv(){const cols=[['Job Number','jobNumber'],['Franchise','franchise'],['GM','gm'],['Days In Status','days'],['Job Status','status'],['Estimated $','estimate'],['SA','sa'],['SA Role','saRole'],['Sub-Segment','subSegment'],['Customer','customer'],['Customer History Type','history'],['Next Steps to Close','nextSteps']];const q=v=>'"'+String(v??'').replaceAll('"','""')+'"';const csv=[cols.map(c=>q(c[0])).join(','),...filtered.map(j=>cols.map(c=>q(j[c[1]])).join(','))].join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='filtered-franchise-jobs.csv';a.click();URL.revokeObjectURL(a.href)}
 async function copySavedLink(){const url=new URL(location.href);url.hash='';url.search='';const link=url.href,button=document.getElementById('copySavedLink');try{await navigator.clipboard.writeText(link);button.textContent='Link Copied';setTimeout(()=>button.textContent='Copy App Link',1800)}catch{window.prompt('Copy this app link:',link)}}
-function downloadSavedCopy(){const backup={exportedAt:new Date().toISOString(),dataset:sourceJobs,edits:stored};const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(backup,null,2)],{type:'application/json'}));a.download='franchise-job-status-backup-'+new Date().toISOString().slice(0,10)+'.json';a.click();URL.revokeObjectURL(a.href)}
+function downloadSavedCopy(){
+  const now=new Date(),datePart=now.toISOString().slice(0,10),stamp=new Intl.DateTimeFormat('en-US',{dateStyle:'medium',timeStyle:'short'}).format(now);
+  const clone=document.documentElement.cloneNode(true);
+  clone.querySelectorAll('script[src^="data/jobs-"],script[src*="supabase-js"]').forEach(node=>node.remove());
+  clone.querySelector('#job-data').textContent=JSON.stringify(sourceJobs).replaceAll('<','\\u003c');
+  clone.querySelector('#embedded-edits').textContent=JSON.stringify(stored).replaceAll('<','\\u003c');
+  const mainScript=[...clone.querySelectorAll('script:not([src])')].find(node=>node.textContent.includes('const embeddedJobs='));
+  if(!mainScript){alert('The snapshot could not be prepared.');return}
+  mainScript.textContent=mainScript.textContent
+    .replace('const embeddedJobs=window.EMBEDDED_JOBS||[];',"const embeddedJobs=JSON.parse(document.getElementById('job-data').textContent);")
+    .replace("const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY,{auth:{persistSession:false}});",'const db=null;')
+    .replace('initializeSharedData();','');
+  ['uploadExcel','copySavedLink','downloadCopy','editHeader','saveJob','resetJob'].forEach(id=>{const el=clone.querySelector('#'+id);if(el)el.hidden=true});
+  ['editSa','editRole','editSegment','editNextSteps'].forEach(id=>{const el=clone.querySelector('#'+id);if(el)el.disabled=true});
+  const drawer=clone.querySelector('#drawer'),backdrop=clone.querySelector('#backdrop');drawer.classList.remove('open');drawer.setAttribute('aria-hidden','true');backdrop.classList.remove('open');
+  clone.querySelector('#dataDate').textContent='Snapshot · '+stamp;
+  clone.querySelector('.footnote').textContent='View-only snapshot saved '+stamp+'. Filters, sorting, job details, pagination, and CSV export remain available. This file does not connect to or change the live shared database.';
+  const file='<!doctype html>\n'+clone.outerHTML,a=document.createElement('a'),url=URL.createObjectURL(new Blob([file],{type:'text/html'}));
+  a.href=url;a.download='franchise-job-status-snapshot-'+datePart+'.html';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
 setOptions(els.gm,unique(jobs.map(j=>j.gm)),'GMs','');refreshOptions('init');els.history.value='Previous Customer';runFilter();
 ids.forEach(id=>els[id].addEventListener('change',()=>{if(id==='gm'||id==='franchise')refreshOptions(id);runFilter()}));
 document.querySelectorAll('.filter-search').forEach(input=>input.addEventListener('input',()=>searchSelect(input)));
