@@ -21,6 +21,7 @@ For restricted access, replace the anonymous policies with authenticated-user po
 - Job edits are written to `public.job_edits`.
 - Uploaded workbook datasets are written to `public.app_state`.
 - Supabase Realtime pushes changes to other open browsers.
+- The **Edit Header** control saves a shared title, subtitle, and data label for each uploaded dataset.
 - The embedded dataset remains a recovery snapshot if the database is unavailable.
 
 ## Site
