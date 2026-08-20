@@ -121,6 +121,11 @@ let datasetLabel='Data through Aug 17, 2026';
 const ids=['gm','franchise','job','status','sa','saRole','subSegment','customer','history'];
 const jobField={job:'jobNumber'};
 const els=Object.fromEntries(ids.map(id=>[id,document.getElementById(id)]));
+const PRIMARY_FILTER_STORAGE_KEY='franchise-job-status-primary-filters';
+function savedPrimaryFilters(){try{return JSON.parse(localStorage.getItem(PRIMARY_FILTER_STORAGE_KEY)||'{}')}catch{return {}}}
+function savePrimaryFilters(){try{localStorage.setItem(PRIMARY_FILTER_STORAGE_KEY,JSON.stringify({gm:els.gm.value,franchise:els.franchise.value}))}catch{}}
+function clearSavedPrimaryFilters(){try{localStorage.removeItem(PRIMARY_FILTER_STORAGE_KEY)}catch{}}
+function restorePrimaryFilters(){const saved=savedPrimaryFilters(),gmValues=unique(jobs.map(j=>j.gm)),gm=gmValues.includes(saved.gm)?saved.gm:'';setOptions(els.gm,gmValues,'FBCs',gm);refreshOptions('init');if(saved.franchise&&[...els.franchise.options].some(o=>o.value===saved.franchise))els.franchise.value=saved.franchise;refreshOptions('init')}
 const rowsEl=document.getElementById('jobRows'),emptyEl=document.getElementById('empty');
 const currency=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0});
 const integer=new Intl.NumberFormat('en-US');
@@ -232,10 +237,10 @@ function downloadSavedCopy(){
   const file='<!doctype html>\n'+clone.outerHTML,a=document.createElement('a'),url=URL.createObjectURL(new Blob([file],{type:'text/html'}));
   a.href=url;a.download='franchise-job-status-snapshot-'+datePart+'.html';a.style.display='none';document.body.appendChild(a);a.click();setTimeout(()=>{a.remove();URL.revokeObjectURL(url)},10000);
 }
-setOptions(els.gm,unique(jobs.map(j=>j.gm)),'FBCs','');refreshOptions('init');els.history.value='Previous Customer';runFilter();
-ids.forEach(id=>els[id].addEventListener('change',()=>{if(id==='gm'||id==='franchise')refreshOptions(id);runFilter()}));
+restorePrimaryFilters();els.history.value='Previous Customer';runFilter();
+ids.forEach(id=>els[id].addEventListener('change',()=>{if(id==='gm'||id==='franchise'){refreshOptions(id);savePrimaryFilters()}runFilter()}));
 document.querySelectorAll('.filter-search').forEach(input=>input.addEventListener('input',()=>searchSelect(input)));
-document.getElementById('clearFilters').onclick=()=>{ids.forEach(id=>els[id].value='');document.querySelectorAll('.filter-search').forEach(input=>input.value='');refreshOptions('clear');setOptions(els.gm,unique(jobs.map(j=>j.gm)),'FBCs','');runFilter()};document.getElementById('viewSelected').onclick=()=>{const selected=filtered.find(j=>!els.job.value||j.jobNumber===els.job.value);if(selected)openJob(selected)};document.getElementById('editHeader').onclick=editHeader;document.getElementById('uploadExcel').onclick=()=>document.getElementById('excelUpload').click();document.getElementById('excelUpload').onchange=e=>{if(e.target.files[0])uploadWorkbook(e.target.files[0])};document.getElementById('sortOrder').onchange=runFilter;document.getElementById('exportCsv').onclick=exportCsv;document.getElementById('copySavedLink').onclick=copySavedLink;document.getElementById('downloadCopy').onclick=downloadSavedCopy;document.getElementById('prev').onclick=()=>{page--;render()};document.getElementById('next').onclick=()=>{page++;render()};document.getElementById('closeDrawer').onclick=closeDrawer;document.getElementById('backdrop').onclick=closeDrawer;document.getElementById('saveJob').onclick=saveJob;document.getElementById('markNoteRead').onclick=markNoteRead;document.getElementById('resetJob').onclick=resetJob;document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDrawer()});
+document.getElementById('clearFilters').onclick=()=>{ids.forEach(id=>els[id].value='');clearSavedPrimaryFilters();document.querySelectorAll('.filter-search').forEach(input=>input.value='');refreshOptions('clear');setOptions(els.gm,unique(jobs.map(j=>j.gm)),'FBCs','');runFilter()};document.getElementById('viewSelected').onclick=()=>{const selected=filtered.find(j=>!els.job.value||j.jobNumber===els.job.value);if(selected)openJob(selected)};document.getElementById('editHeader').onclick=editHeader;document.getElementById('uploadExcel').onclick=()=>document.getElementById('excelUpload').click();document.getElementById('excelUpload').onchange=e=>{if(e.target.files[0])uploadWorkbook(e.target.files[0])};document.getElementById('sortOrder').onchange=runFilter;document.getElementById('exportCsv').onclick=exportCsv;document.getElementById('copySavedLink').onclick=copySavedLink;document.getElementById('downloadCopy').onclick=downloadSavedCopy;document.getElementById('prev').onclick=()=>{page--;render()};document.getElementById('next').onclick=()=>{page++;render()};document.getElementById('closeDrawer').onclick=closeDrawer;document.getElementById('backdrop').onclick=closeDrawer;document.getElementById('saveJob').onclick=saveJob;document.getElementById('markNoteRead').onclick=markNoteRead;document.getElementById('resetJob').onclick=resetJob;document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDrawer()});
 initializeSharedData();
 </script>
 </body></html>
