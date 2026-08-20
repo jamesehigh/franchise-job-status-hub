@@ -228,7 +228,7 @@ function downloadSavedCopy(){
   clone.querySelector('#dataDate').textContent='Snapshot · '+stamp;
   clone.querySelector('.footnote').textContent='View-only snapshot saved '+stamp+'. Filters, sorting, job details, pagination, and CSV export remain available. This file does not connect to or change the live shared database.';
   const file='<!doctype html>\n'+clone.outerHTML,a=document.createElement('a'),url=URL.createObjectURL(new Blob([file],{type:'text/html'}));
-  a.href=url;a.download='franchise-job-status-snapshot-'+datePart+'.html';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  a.href=url;a.download='franchise-job-status-snapshot-'+datePart+'.html';a.style.display='none';document.body.appendChild(a);a.click();setTimeout(()=>{a.remove();URL.revokeObjectURL(url)},10000);
 }
 setOptions(els.gm,unique(jobs.map(j=>j.gm)),'FBCs','');refreshOptions('init');els.history.value='Previous Customer';runFilter();
 ids.forEach(id=>els[id].addEventListener('change',()=>{if(id==='gm'||id==='franchise')refreshOptions(id);runFilter()}));
